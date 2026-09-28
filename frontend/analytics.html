@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>MovieLens k-NN - Métricas do Modelo & Matrizes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono, .font-data-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #090714; }
+        ::-webkit-scrollbar-thumb { background: #251b47; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b2c6e; }
+    </style>
+</head>
+<body class="bg-[#090714] text-slate-100 antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden selection:bg-blue-600 selection:text-white">
+
+    <nav class="sticky top-0 z-50 flex justify-between items-center w-full px-5 py-3.5 h-16 bg-[#0f0a22]/95 backdrop-blur-md border-b border-[#231745] shadow-lg shadow-purple-950/20 md:hidden">
+        <div class="flex items-center gap-2.5">
+            <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-xs tracking-wider font-mono shadow-md shadow-blue-500/20">ML</span>
+            <span class="text-white font-bold text-sm tracking-tight">Métricas do Modelo</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="index.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Comparador">
+                <span class="material-symbols-outlined text-[20px]">compare_arrows</span>
+            </a>
+            <a href="dataset.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Filmes Similares">
+                <span class="material-symbols-outlined text-[20px]">movie_filter</span>
+            </a>
+            <a href="analytics.html" class="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30" title="Métricas do Modelo">
+                <span class="material-symbols-outlined text-[20px]">query_stats</span>
+            </a>
+        </div>
+    </nav>
+
+    <aside class="hidden md:flex flex-col w-[265px] h-screen overflow-y-auto bg-[#0d0820] border-r border-[#221644] fixed left-0 top-0 z-40 shadow-2xl">
+        <div class="p-6 flex flex-col gap-2.5 border-b border-[#221644]">
+            <div class="flex items-center gap-2.5">
+                <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-sm tracking-wider font-mono shadow-md shadow-blue-500/25">ML</span>
+                <span class="text-white font-extrabold text-base tracking-tight">MovieLens k-NN</span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium leading-relaxed">Filtragem Colaborativa por Cosseno (Google Colab Pipeline).</p>
+        </div>
+
+        <nav class="flex-1 py-5 flex flex-col gap-1.5 px-3 text-sm font-semibold">
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="index.html">
+                <span class="material-symbols-outlined text-slate-400">compare_arrows</span>
+                Comparador & Top-N
+            </a>
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="dataset.html">
+                <span class="material-symbols-outlined text-slate-400">movie_filter</span>
+                Filmes Similares
+            </a>
+            <a class="flex items-center gap-3.5 text-blue-300 bg-gradient-to-r from-blue-600/20 via-indigo-600/15 to-transparent border-l-4 border-blue-500 px-4 py-3 rounded-r-xl transition-all shadow-sm" href="analytics.html">
+                <span class="material-symbols-outlined text-blue-400">query_stats</span>
+                Métricas do Modelo
+            </a>
+        </nav>
+
+        <div class="p-5 border-t border-[#221644] flex flex-col gap-3 bg-[#0a061a]/60">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <div id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse"></div>
+                    <span id="api-status-text" class="text-slate-300 font-medium">MovieLens API Online</span>
+                </div>
+                <a href="/docs" target="_blank" class="text-blue-400 hover:text-blue-300 text-[11px] font-medium underline transition">Swagger</a>
+            </div>
+            <div class="text-[11px] text-slate-400 font-data-mono bg-[#140e2e] px-2.5 py-1.5 rounded-lg border border-[#26184c] flex items-center justify-between">
+                <span>Matriz CSR</span>
+                <span class="text-blue-400 font-bold">610 × 9724</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-[265px] p-6 lg:p-8 max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+
+        <header class="bg-[#120c2a] p-6 lg:p-7 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/20 flex flex-col justify-between items-start gap-2 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="text-xs uppercase font-extrabold tracking-wider bg-blue-500/15 text-blue-400 px-2.5 py-0.5 rounded-md border border-blue-500/25">Partes 1 & 2 do Colab • Esparsidade & Otimização de Memória</span>
+                </div>
+                <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight">Estatísticas do Modelo & Matriz de Utilidade</h1>
+                <p class="text-sm text-slate-400 mt-1 leading-relaxed">Comparação entre a matriz densa e a matriz esparsa CSR (Compressed Sparse Row), distribuição das avaliações e vizinhança de usuários.</p>
+            </div>
+        </header>
+
+        <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dimensões Matriz</span>
+                <div id="stat-matrix-dim" class="text-lg lg:text-xl font-black text-white font-data-mono mt-1">610 × 9724</div>
+                <span class="text-[10px] text-slate-500 mt-1">usuários × filmes</span>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-rose-500/30 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Memória Densa</span>
+                <div id="stat-mem-dense" class="text-lg lg:text-xl font-black text-rose-400 font-data-mono mt-1">45.26 MB</div>
+                <span class="text-[10px] text-rose-300/70 mt-1">DataFrame com zeros</span>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#150e33] to-[#1c1248] p-4.5 rounded-xl border border-blue-500/40 shadow-xl shadow-blue-950/20 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-16 h-16 bg-blue-500/20 rounded-full blur-xl pointer-events-none"></div>
+                <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider">Memória CSR</span>
+                <div id="stat-mem-sparse" class="text-lg lg:text-xl font-black text-blue-300 font-data-mono mt-1">0.77 MB</div>
+                <span class="text-[10px] text-emerald-400 font-semibold mt-1">Economia de ~98.3%</span>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Esparsidade</span>
+                <div id="stat-sparsity" class="text-lg lg:text-xl font-black text-white font-data-mono mt-1">98.30%</div>
+                <span class="text-[10px] text-slate-500 mt-1">células vazias</span>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Avaliações</span>
+                <div id="stat-total-ratings" class="text-lg lg:text-xl font-black text-indigo-300 font-data-mono mt-1">100.836</div>
+                <span class="text-[10px] text-slate-500 mt-1">dataset ratings.csv</span>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Média Global</span>
+                <div id="stat-global-mean" class="text-lg lg:text-xl font-black text-blue-400 font-data-mono mt-1">★ 3.50</div>
+                <span class="text-[10px] text-slate-500 mt-1">escala 0.5 a 5.0</span>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-[#120c2a] p-6 lg:p-7 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/20 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-blue-400 bg-blue-500/15 p-2 rounded-lg border border-blue-500/20">bar_chart</span>
+                        <h2 class="font-extrabold text-base text-white">Distribuição de Avaliações (Estrelas MovieLens)</h2>
+                    </div>
+                    <span class="text-xs text-slate-400 font-data-mono bg-[#140e2e] px-2.5 py-1 rounded-lg border border-[#26184c]">10 faixas (0.5 a 5.0)</span>
+                </div>
+                <div class="h-64 w-full pt-2">
+                    <canvas id="chart-ratings-distribution"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-[#120c2a] p-6 lg:p-7 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/20 flex flex-col justify-between gap-4">
+                <div class="flex flex-col gap-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-indigo-400 bg-indigo-500/15 p-2 rounded-lg border border-indigo-500/20">functions</span>
+                        <h3 class="font-extrabold text-base text-white">Fórmula de Predição</h3>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Predição de nota do usuário u para o item i ajustada pelo viés individual (média):
+                    </p>
+                    <div class="p-3.5 bg-[#0a061b] rounded-xl border border-[#241747] text-center font-data-mono text-xs text-blue-300 overflow-x-auto shadow-inner">
+                        r̂ᵤᵢ = r̄ᵤ + Σ sim(u, v)(rᵥᵢ - r̄ᵥ) / Σ |sim(u, v)|
+                    </div>
+                    <ul class="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside leading-relaxed">
+                        <li><strong class="text-white">r̄ᵤ</strong>: Média histórica das notas dadas pelo usuário u.</li>
+                        <li><strong class="text-white">sim(u, v)</strong>: Similaridade de cosseno 1 - cosine_dist.</li>
+                        <li><strong class="text-white">rᵥᵢ - r̄ᵥ</strong>: Desvio da nota do vizinho em relação à sua média.</li>
+                    </ul>
+                </div>
+                <div class="p-3 bg-[#0a061b] rounded-xl border border-[#241747] text-[11px] text-slate-400">
+                    <span class="text-blue-400 font-bold block mb-1">Métrica de Distância:</span>
+                    NearestNeighbors(metric="cosine", algorithm="brute") sobre matriz scipy CSR.
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-[#120c2a] rounded-2xl border border-[#241747] shadow-xl overflow-hidden flex flex-col">
+            <div class="p-5 border-b border-[#241747] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#0f0a24]">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-blue-400 bg-blue-500/15 p-2 rounded-lg border border-blue-500/20">diversity_3</span>
+                    <div>
+                        <h3 class="font-extrabold text-base text-white">k Vizinhos Mais Próximos de um Usuário</h3>
+                        <p class="text-xs text-slate-400">Analise a proximidade angular com outros avaliadores da base.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase">Inspecionar Usuário:</label>
+                    <select id="analytics-user-select" class="px-3 py-1.5 rounded-lg bg-[#0a061b] border border-[#2b1b54] text-white text-xs font-data-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        <option value="65" selected>User #65</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#0e0921] border-b border-[#241747] text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="p-3.5 w-16">Rank</th>
+                            <th class="p-3.5">Vizinho Encontrado</th>
+                            <th class="p-3.5">Distância de Cosseno (d)</th>
+                            <th class="p-3.5 text-right w-48">Similaridade (1 - d)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-neighbors-tbody" class="divide-y divide-[#221644]">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

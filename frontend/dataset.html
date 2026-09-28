@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>MovieLens k-NN - Filmes Similares</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono, .font-data-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #090714; }
+        ::-webkit-scrollbar-thumb { background: #251b47; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b2c6e; }
+    </style>
+</head>
+<body class="bg-[#090714] text-slate-100 antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden selection:bg-blue-600 selection:text-white">
+
+    <nav class="sticky top-0 z-50 flex justify-between items-center w-full px-5 py-3.5 h-16 bg-[#0f0a22]/95 backdrop-blur-md border-b border-[#231745] shadow-lg shadow-purple-950/20 md:hidden">
+        <div class="flex items-center gap-2.5">
+            <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-xs tracking-wider font-mono shadow-md shadow-blue-500/20">ML</span>
+            <span class="text-white font-bold text-sm tracking-tight">Filmes Similares</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="index.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Comparador">
+                <span class="material-symbols-outlined text-[20px]">compare_arrows</span>
+            </a>
+            <a href="dataset.html" class="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30" title="Filmes Similares">
+                <span class="material-symbols-outlined text-[20px]">movie_filter</span>
+            </a>
+            <a href="analytics.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Métricas do Modelo">
+                <span class="material-symbols-outlined text-[20px]">query_stats</span>
+            </a>
+        </div>
+    </nav>
+
+    <aside class="hidden md:flex flex-col w-[265px] h-screen overflow-y-auto bg-[#0d0820] border-r border-[#221644] fixed left-0 top-0 z-40 shadow-2xl">
+        <div class="p-6 flex flex-col gap-2.5 border-b border-[#221644]">
+            <div class="flex items-center gap-2.5">
+                <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-sm tracking-wider font-mono shadow-md shadow-blue-500/25">ML</span>
+                <span class="text-white font-extrabold text-base tracking-tight">MovieLens k-NN</span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium leading-relaxed">Filtragem Colaborativa por Cosseno (Google Colab Pipeline).</p>
+        </div>
+
+        <nav class="flex-1 py-5 flex flex-col gap-1.5 px-3 text-sm font-semibold">
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="index.html">
+                <span class="material-symbols-outlined text-slate-400">compare_arrows</span>
+                Comparador & Top-N
+            </a>
+            <a class="flex items-center gap-3.5 text-blue-300 bg-gradient-to-r from-blue-600/20 via-indigo-600/15 to-transparent border-l-4 border-blue-500 px-4 py-3 rounded-r-xl transition-all shadow-sm" href="dataset.html">
+                <span class="material-symbols-outlined text-blue-400">movie_filter</span>
+                Filmes Similares
+            </a>
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="analytics.html">
+                <span class="material-symbols-outlined text-slate-400">query_stats</span>
+                Métricas do Modelo
+            </a>
+        </nav>
+
+        <div class="p-5 border-t border-[#221644] flex flex-col gap-3 bg-[#0a061a]/60">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <div id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse"></div>
+                    <span id="api-status-text" class="text-slate-300 font-medium">MovieLens API Online</span>
+                </div>
+                <a href="/docs" target="_blank" class="text-blue-400 hover:text-blue-300 text-[11px] font-medium underline transition">Swagger</a>
+            </div>
+            <div class="text-[11px] text-slate-400 font-data-mono bg-[#140e2e] px-2.5 py-1.5 rounded-lg border border-[#26184c] flex items-center justify-between">
+                <span>Matriz CSR</span>
+                <span class="text-blue-400 font-bold">610 × 9724</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-[265px] p-6 lg:p-8 max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+
+        <header class="bg-[#120c2a] p-6 lg:p-7 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/20 flex flex-col gap-5 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative z-10">
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-xs uppercase font-extrabold tracking-wider bg-blue-500/15 text-blue-400 px-2.5 py-0.5 rounded-md border border-blue-500/25">Parte 3 do Colab • Filtragem Item-Item</span>
+                    </div>
+                    <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight">Explorador de Filmes Similares</h1>
+                    <p class="text-sm text-slate-400 mt-1 leading-relaxed">Busque qualquer título do catálogo para encontrar os k vizinhos mais próximos no espaço vetorial de avaliações.</p>
+                </div>
+
+                <div class="flex items-center gap-3 bg-[#0a061b] p-3 rounded-xl border border-[#241747] shadow-inner">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">k Similares:</label>
+                    <input id="k-similar-input" type="number" min="1" max="50" value="10"
+                        class="w-16 px-2.5 py-1.5 rounded-lg bg-[#140e2e] border border-[#2b1b54] text-white text-sm font-data-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center transition"/>
+                </div>
+            </div>
+
+            <div class="relative w-full z-20">
+                <div class="relative flex items-center">
+                    <span class="material-symbols-outlined absolute left-4 text-blue-400 pointer-events-none">search</span>
+                    <input id="movie-search-input" type="text"
+                        placeholder="Digite o título do filme para buscar similares (ex: Toy Story, Matrix, Pulp Fiction, Star Wars)..."
+                        value="Toy Story (1995)"
+                        autocomplete="off"
+                        class="w-full pl-12 pr-4 py-3.5 bg-[#0a061b] border border-[#2b1b54] rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition shadow-inner"/>
+                </div>
+
+                <div id="search-suggestions" class="hidden absolute top-full left-0 right-0 mt-2 bg-[#120c2a]/95 backdrop-blur-md border border-[#2f1f5c] rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto divide-y divide-[#221644]">
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1 text-xs z-10">
+                <span class="text-slate-400 font-semibold flex items-center gap-1.5 mr-1">
+                    <span class="material-symbols-outlined text-[16px] text-blue-400">touch_app</span>
+                    Exemplos Rápidos:
+                </span>
+                <button onclick="selectMovie(1, 'Toy Story (1995)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    Toy Story (1995)
+                </button>
+                <button onclick="selectMovie(260, 'Star Wars: Episode IV - A New Hope (1977)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    Star Wars: Ep. IV (1977)
+                </button>
+                <button onclick="selectMovie(296, 'Pulp Fiction (1994)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    Pulp Fiction (1994)
+                </button>
+                <button onclick="selectMovie(2571, 'Matrix, The (1999)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    The Matrix (1999)
+                </button>
+                <button onclick="selectMovie(356, 'Forrest Gump (1994)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    Forrest Gump (1994)
+                </button>
+                <button onclick="selectMovie(480, 'Jurassic Park (1993)')" class="px-3 py-1.5 rounded-full bg-[#150f33] border border-[#2b1c57] text-slate-300 hover:text-white hover:border-blue-500/60 hover:bg-blue-600/15 transition cursor-pointer">
+                    Jurassic Park (1993)
+                </button>
+            </div>
+        </header>
+
+        <section id="target-movie-card" class="bg-[#120c2a] p-5 lg:p-6 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+            <div class="flex items-center gap-4">
+                <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 p-3 shadow-md shadow-blue-900/20">
+                    <span class="material-symbols-outlined text-[30px]">movie</span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">Filme de Referência</span>
+                        <span id="target-movie-id" class="text-xs font-data-mono text-purple-200 border border-[#2c1d56] px-2 py-0.5 rounded bg-[#181038]">ID #1</span>
+                    </div>
+                    <h2 id="target-movie-title" class="text-xl lg:text-2xl font-black text-white mt-1">Toy Story (1995)</h2>
+                    <p id="target-movie-genres" class="text-xs text-slate-400 font-data-mono mt-1">Adventure|Animation|Children|Comedy|Fantasy</p>
+                </div>
+            </div>
+            <div class="text-xs text-slate-400 bg-[#0a061b] p-4 rounded-xl border border-[#241747] max-w-md shadow-inner">
+                <span class="text-white font-semibold flex items-center gap-1.5 mb-1">
+                    <span class="material-symbols-outlined text-[16px] text-blue-400">function</span>
+                    Fórmula de Similaridade
+                </span>
+                Distância de Cosseno d = 1 - cos(u, v) na matriz esparsa transposta (9.724 × 610). Quanto mais próximo de 1.000, maior a correlação entre as notas dos usuários.
+            </div>
+        </section>
+
+        <section class="bg-[#120c2a] rounded-2xl border border-[#241747] shadow-xl overflow-hidden flex flex-col">
+            <div class="p-5 border-b border-[#241747] flex justify-between items-center bg-[#0f0a24]">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-blue-400 bg-blue-500/15 p-2 rounded-lg border border-blue-500/20">group_work</span>
+                    <div>
+                        <h3 class="font-extrabold text-base text-white">Filmes Mais Similares no Catálogo</h3>
+                        <p class="text-xs text-slate-400">Ordenados por maior proximidade angular de cosseno.</p>
+                    </div>
+                </div>
+                <div id="similar-loader" class="hidden flex items-center gap-2 text-xs text-blue-400 font-medium">
+                    <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                    <span>Calculando k-NN...</span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#0e0921] border-b border-[#241747] text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="p-3.5 w-16">Rank</th>
+                            <th class="p-3.5">Filme Similar</th>
+                            <th class="p-3.5">Gêneros</th>
+                            <th class="p-3.5 text-right w-64">Similaridade de Cosseno</th>
+                        </tr>
+                    </thead>
+                    <tbody id="similar-movies-tbody" class="divide-y divide-[#221644]">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

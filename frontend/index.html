@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>MovieLens k-NN - Comparador & Recomendações</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono, .font-data-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #090714; }
+        ::-webkit-scrollbar-thumb { background: #251b47; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b2c6e; }
+    </style>
+</head>
+<body class="bg-[#090714] text-slate-100 antialiased min-h-screen flex flex-col md:flex-row overflow-x-hidden selection:bg-blue-600 selection:text-white">
+
+    <nav class="sticky top-0 z-50 flex justify-between items-center w-full px-5 py-3.5 h-16 bg-[#0f0a22]/95 backdrop-blur-md border-b border-[#231745] shadow-lg shadow-purple-950/20 md:hidden">
+        <div class="flex items-center gap-2.5">
+            <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-xs tracking-wider font-mono shadow-md shadow-blue-500/20">ML</span>
+            <span class="text-white font-bold text-sm tracking-tight">MovieLens k-NN</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="index.html" class="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30" title="Comparador">
+                <span class="material-symbols-outlined text-[20px]">compare_arrows</span>
+            </a>
+            <a href="dataset.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Filmes Similares">
+                <span class="material-symbols-outlined text-[20px]">movie_filter</span>
+            </a>
+            <a href="analytics.html" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1238] transition" title="Métricas do Modelo">
+                <span class="material-symbols-outlined text-[20px]">query_stats</span>
+            </a>
+        </div>
+    </nav>
+
+    <aside class="hidden md:flex flex-col w-[265px] h-screen overflow-y-auto bg-[#0d0820] border-r border-[#221644] fixed left-0 top-0 z-40 shadow-2xl">
+        <div class="p-6 flex flex-col gap-2.5 border-b border-[#221644]">
+            <div class="flex items-center gap-2.5">
+                <span class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white font-black px-2.5 py-1 rounded-lg text-sm tracking-wider font-mono shadow-md shadow-blue-500/25">ML</span>
+                <span class="text-white font-extrabold text-base tracking-tight">MovieLens k-NN</span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium leading-relaxed">Filtragem Colaborativa por Cosseno (Google Colab Pipeline).</p>
+        </div>
+
+        <nav class="flex-1 py-5 flex flex-col gap-1.5 px-3 text-sm font-semibold">
+            <a class="flex items-center gap-3.5 text-blue-300 bg-gradient-to-r from-blue-600/20 via-indigo-600/15 to-transparent border-l-4 border-blue-500 px-4 py-3 rounded-r-xl transition-all shadow-sm" href="index.html">
+                <span class="material-symbols-outlined text-blue-400">compare_arrows</span>
+                Comparador & Top-N
+            </a>
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="dataset.html">
+                <span class="material-symbols-outlined text-slate-400">movie_filter</span>
+                Filmes Similares
+            </a>
+            <a class="flex items-center gap-3.5 text-slate-400 hover:text-slate-100 hover:bg-[#160f33] px-4 py-3 rounded-xl transition-all" href="analytics.html">
+                <span class="material-symbols-outlined text-slate-400">query_stats</span>
+                Métricas do Modelo
+            </a>
+        </nav>
+
+        <div class="p-5 border-t border-[#221644] flex flex-col gap-3 bg-[#0a061a]/60">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <div id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50 animate-pulse"></div>
+                    <span id="api-status-text" class="text-slate-300 font-medium">MovieLens API Online</span>
+                </div>
+                <a href="/docs" target="_blank" class="text-blue-400 hover:text-blue-300 text-[11px] font-medium underline transition">Swagger</a>
+            </div>
+            <div class="text-[11px] text-slate-400 font-data-mono bg-[#140e2e] px-2.5 py-1.5 rounded-lg border border-[#26184c] flex items-center justify-between">
+                <span>Matriz CSR</span>
+                <span class="text-blue-400 font-bold">610 × 9724</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-[265px] p-6 lg:p-8 max-w-[1440px] mx-auto w-full flex flex-col gap-6">
+
+        <header class="bg-[#120c2a] p-6 lg:p-7 rounded-2xl border border-[#241747] shadow-xl shadow-purple-950/20 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="text-xs uppercase font-extrabold tracking-wider bg-blue-500/15 text-blue-400 px-2.5 py-0.5 rounded-md border border-blue-500/25">Parte 4 do Colab • Comparativo de Abordagens</span>
+                </div>
+                <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight">Recomendações: User-User vs Item-Item</h1>
+                <p class="text-sm text-slate-400 mt-1 leading-relaxed">Geração de Top-N pelo desvio da média dos vizinhos e por similaridade com filmes favoritos.</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 bg-[#0a061b] p-3.5 rounded-xl border border-[#241747] w-full lg:w-auto relative z-10 shadow-inner">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">User ID:</label>
+                    <select id="select-user" class="px-3 py-1.5 rounded-lg bg-[#140e2e] border border-[#2b1b54] text-white text-sm font-data-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        <option value="65" selected>Usuário 65</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5 w-20">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">k (vizinhos):</label>
+                    <input id="input-k" type="number" min="5" max="50" value="20"
+                        class="px-2 py-1.5 rounded-lg bg-[#140e2e] border border-[#2b1b54] text-white text-sm font-data-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center transition"/>
+                </div>
+
+                <div class="flex flex-col gap-1.5 w-20">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">N (filmes):</label>
+                    <input id="input-n" type="number" min="5" max="30" value="10"
+                        class="px-2 py-1.5 rounded-lg bg-[#140e2e] border border-[#2b1b54] text-white text-sm font-data-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center transition"/>
+                </div>
+
+                <div class="flex items-end self-end">
+                    <button onclick="initIndex()" class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold px-4 py-2.5 rounded-lg text-xs transition-all shadow-lg shadow-blue-600/30 active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">sync</span>
+                        Recomendar
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuário Ativo</span>
+                <div class="text-2xl font-black text-white font-data-mono my-2 tracking-tight" id="user-card-id">User #65</div>
+                <div class="text-xs text-slate-400">Base de 610 usuários MovieLens</div>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Média do Usuário (r̄ᵤ)</span>
+                <div class="text-2xl font-black text-blue-400 font-data-mono my-2 tracking-tight" id="user-card-mean">★ 4.03</div>
+                <div class="text-xs text-slate-400">Linha de base para predição</div>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Avaliações Feitas</span>
+                <div class="text-2xl font-black text-indigo-300 font-data-mono my-2 tracking-tight" id="user-card-ratings">34 filmes</div>
+                <div class="text-xs text-slate-400">Histórico de consumo</div>
+            </div>
+
+            <div class="bg-[#120c2a] p-4.5 rounded-xl border border-[#241747] shadow-lg shadow-purple-950/10 flex flex-col justify-between hover:border-blue-500/30 transition">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Consenso no Top-N</span>
+                <div class="text-2xl font-black text-blue-400 font-data-mono my-2 tracking-tight" id="user-card-common">0 filmes</div>
+                <div class="text-xs text-slate-400">Interseção User-User ∩ Item-Item</div>
+            </div>
+        </section>
+
+        <div id="common-movies-banner" class="hidden p-3.5 rounded-xl text-xs transition-all"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+            <div id="comparison-loader" class="hidden absolute inset-0 bg-[#090714]/85 backdrop-blur-sm z-20 flex items-center justify-center rounded-2xl">
+                <div class="flex items-center gap-3 text-blue-400 font-bold text-sm bg-[#140e2e] px-5 py-3 rounded-xl border border-blue-500/30 shadow-xl">
+                    <span class="material-symbols-outlined animate-spin text-2xl">progress_activity</span>
+                    <span>Calculando recomendações k-NN...</span>
+                </div>
+            </div>
+
+            <div class="bg-[#120c2a] rounded-2xl border border-[#241747] shadow-xl overflow-hidden flex flex-col">
+                <div class="p-4.5 bg-[#0f0a24] border-b border-[#241747] flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">Abordagem 1</span>
+                            <span class="text-xs font-data-mono bg-[#181038] text-purple-200 px-2 py-0.5 rounded border border-[#2c1d56]">k-NN User-User</span>
+                        </div>
+                        <h2 class="font-bold text-white text-lg mt-1">Top-N por Similaridade de Usuários</h2>
+                    </div>
+                    <span class="material-symbols-outlined text-blue-400 bg-blue-500/15 p-2 rounded-lg border border-blue-500/20">group</span>
+                </div>
+                <div class="p-3 bg-[#0a061b] border-b border-[#241747] text-xs text-slate-400">
+                    Fórmula de Predição: <code class="font-data-mono text-blue-300">r̂ᵤᵢ = r̄ᵤ + Σ sim(u,v)(rᵥᵢ - r̄ᵥ) / Σ |sim|</code>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-[#0e0921] text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-[#241747]">
+                                <th class="p-3.5 w-12">#</th>
+                                <th class="p-3.5">Filme Recomendado</th>
+                                <th class="p-3.5 text-right">Nota Prevista (r̂)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-user-user" class="divide-y divide-[#221644]">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-[#120c2a] rounded-2xl border border-[#241747] shadow-xl overflow-hidden flex flex-col">
+                <div class="p-4.5 bg-[#0f0a24] border-b border-[#241747] flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Abordagem 2</span>
+                            <span class="text-xs font-data-mono bg-[#181038] text-purple-200 px-2 py-0.5 rounded border border-[#2c1d56]">k-NN Item-Item</span>
+                        </div>
+                        <h2 class="font-bold text-white text-lg mt-1">Top-N por Filmes Favoritos</h2>
+                    </div>
+                    <span class="material-symbols-outlined text-indigo-400 bg-indigo-500/15 p-2 rounded-lg border border-indigo-500/20">movie</span>
+                </div>
+                <div class="p-3 bg-[#0a061b] border-b border-[#241747] text-xs text-slate-400">
+                    Critério de Afinidade: Vizinhos dos filmes avaliados com <code class="font-data-mono text-blue-300">nota ≥ 4.0</code>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-[#0e0921] text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-[#241747]">
+                                <th class="p-3.5 w-12">#</th>
+                                <th class="p-3.5">Filme Recomendado</th>
+                                <th class="p-3.5 text-center">Favoritos</th>
+                                <th class="p-3.5 text-right">Score Acumulado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-item-item" class="divide-y divide-[#221644]">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
